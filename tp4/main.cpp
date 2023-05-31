@@ -13,110 +13,131 @@ struct pos {
 using namespace Gdiplus;
 #pragma comment (lib,"Gdiplus.lib")
 
+class Elevator {
+private:
+    Image* image=nullptr; // Use a pointer to Image
+    int x;
+    int y;
+    int speed;
+
+public:
+    Elevator(Image *image, int initialX, int initialY, int initialSpeed)
+        : x(initialX), y(initialY), speed(initialSpeed)
+    {
+        this->image = image;
+    }
+
+    ~Elevator()
+    {
+        delete image;
+    }
+
+    void Draw(Graphics* graphics) {
+        graphics->DrawImage(image, x, y, config::elevatorImageHeight, config::elevatorImageWidth);
+    }
+
+    void UpdatePosition(HWND hWnd) {
+        RECT rect;
+        GetClientRect(hWnd, &rect);
+
+        // Update the position of the image
+        y += speed;
+
+        // Check if the image has reached the bottom or top of the window
+        if ((y + config::elevatorImageHeight >= rect.bottom) || (y <= 0))
+        {
+            // Reverse the direction of the image
+            speed *= (-1);
+        }
+
+        // Request a repaint of the window
+        InvalidateRect(hWnd, NULL, FALSE);
+    }
+};
 
 
-pos elevatorData = { 100,100,1 };
+Elevator elevator(new Image(L"C:/Users/matik/OneDrive/Pulpit/tp4/tp4/img/elevator.png"), 200,200,2);
+
 
 
 VOID OnPaint(HDC hdc)
 {
-    Image image(L"C:/Users/matik/OneDrive/Pulpit/tp4/tp4/img/elevator.png");//random peaople img
-    Graphics graphics(hdc);
-    Pen      pen(Color(255, 0, 0, 255));
-    graphics.DrawLine(&pen, 0, 0, 200, 100);
-    graphics.DrawImage(&image,elevatorData.x,elevatorData.y,config::elevatorImageHeight,config::elevatorImageWidth);
+    Graphics *graphics=new Graphics(hdc);
+    elevator.Draw(graphics);
 }
 VOID OnTimer(HWND hWnd) {
-    RECT rect;
-    GetClientRect(hWnd, &rect);
-
-    // Update the position of the image
-    elevatorData.y += elevatorData.speed;
-
-    // Check if the image has reached the bottom of the window
-    if ((elevatorData.y + config::elevatorImageHeight >= rect.bottom)||(elevatorData.y <=0))
-    {
-        // Reset the position of the image to the top
-        elevatorData.speed *= (-1);
-    }
-
-    // Request a repaint of the window
-    InvalidateRect(hWnd, NULL, FALSE);
+    elevator.UpdatePosition(hWnd);
 }
 
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
-INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, PSTR, INT iCmdShow)
-{
-    HWND                hWnd;
-    MSG                 msg;
-    WNDCLASS            wndClass;
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     GdiplusStartupInput gdiplusStartupInput;
-    ULONG_PTR           gdiplusToken;
-
-    // Initialize GDI+.
+    ULONG_PTR gdiplusToken;
     GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-    wndClass.style = CS_HREDRAW | CS_VREDRAW;
-    wndClass.lpfnWndProc = WndProc;
-    wndClass.cbClsExtra = 0;
-    wndClass.cbWndExtra = 0;
-    wndClass.hInstance = hInstance;
-    wndClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-    wndClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wndClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
-    wndClass.lpszMenuName = NULL;
-    wndClass.lpszClassName = TEXT("GettingStarted");
+    // Register the window class
+    const wchar_t CLASS_NAME[] = L"MyWindowClass";
+    WNDCLASS wc = {};
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInstance;
+    wc.lpszClassName = CLASS_NAME;
+    RegisterClass(&wc);
 
-    RegisterClass(&wndClass);
+    // Create the window
+    HWND hWnd = CreateWindowEx(
+        0,
+        CLASS_NAME,
+        L"Window Title",
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+        NULL,
+        NULL,
+        hInstance,
+        NULL
+    );
 
-    hWnd = CreateWindow(
-        TEXT("GettingStarted"),   // window class name
-        TEXT("Getting Started"),  // window caption
-        WS_OVERLAPPEDWINDOW,      // window style
-        CW_USEDEFAULT,            // initial x position
-        CW_USEDEFAULT,            // initial y position
-        config::windowWidth,            // initial x size
-        config::windowHeight,            // initial y size
-        NULL,                     // parent window handle
-        NULL,                     // window menu handle
-        hInstance,                // program instance handle
-        NULL);                    // creation parameters
+    if (hWnd == NULL) {
+        return 0;
+    }
 
-    ShowWindow(hWnd, iCmdShow);
-    UpdateWindow(hWnd);
+    // Set the timer for the OnTimer event
     SetTimer(hWnd, 1, 16, NULL);
-    while (GetMessage(&msg, NULL, 0, 0))
-    {
+
+    ShowWindow(hWnd, nCmdShow);
+
+    // Run the message loop
+    MSG msg = {};
+    while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+}
 
-    GdiplusShutdown(gdiplusToken);
-    return msg.wParam;
-}  // WinMain
-
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
-    WPARAM wParam, LPARAM lParam)
-{
-    HDC          hdc;
-    PAINTSTRUCT  ps;
-
-    switch (message)
+LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    switch (uMsg)
     {
     case WM_PAINT:
-        hdc = BeginPaint(hWnd, &ps);
-        OnPaint(hdc);
+    {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hWnd, &ps);
+
+        Graphics graphics(hdc);
+        elevator.Draw(&graphics);
+
         EndPaint(hWnd, &ps);
-        return 0;
+        break;
+    }
+    case WM_TIMER:
+    {
+        //elevator.UpdatePosition(hWnd);
+        break;
+    }
     case WM_DESTROY:
         PostQuitMessage(0);
-        return 0;
-    case WM_TIMER:
-        OnTimer(hWnd);
-        return 0;
+        break;
     default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
+        return DefWindowProc(hWnd, uMsg, wParam, lParam);
     }
-} // WndProc
+}

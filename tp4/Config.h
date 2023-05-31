@@ -2,6 +2,11 @@
 
 
 namespace config {
+	const WCHAR* elevatorImagePath = L"C:/Users/matik/Documents/Elevator-Simulator/img/elevator.png";
+	const int elevatorStandardSpeed = 2;
+
+
+	const int elevatorMargines = 12;
 	const int elevatorImageHeight = 100;
 	const int elevatorImageWidth = 120;
 

@@ -33,16 +33,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="People.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Config.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Floor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Elevator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

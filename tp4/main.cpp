@@ -4,41 +4,56 @@
 
 #include "Config.h"
 
+#include <filesystem>
+
 struct pos {
     int x;
     int y;
-    int speed;
 };
 
 using namespace Gdiplus;
 #pragma comment (lib,"Gdiplus.lib")
 
+class Elevator {
+private:
+    pos position;
+    int speed;
 
 
-pos elevatorData = { 100,100,1 };
+public:
+    Elevator(pos position):position(position) {
+        this->speed = config::elevatorStandardSpeed;
+    };
+    void draw(Graphics &graphics) {
+        Image image(config::elevatorImagePath);
+        graphics.DrawImage(&image, this->position.x,this->position.y, config::elevatorImageHeight, config::elevatorImageWidth);
+    }
+    void updatePos(RECT &rect) {
+        // Update the position of the image
+        this->position.y += this->speed;
 
+        // Check if the image has reached the bottom of the window
+        if ((this->position.y + config::elevatorImageHeight +config::elevatorMargines >= rect.bottom) || (this->position.y <= 0))
+        {
+            // Reset the position of the image to the top
+            this->speed *= (-1);
+        }
+    }
+};
+
+Elevator ele({100,100});
 
 VOID OnPaint(HDC hdc)
 {
-    Image image(L"C:/Users/matik/OneDrive/Pulpit/tp4/tp4/img/elevator.png");//random peaople img
     Graphics graphics(hdc);
-    Pen      pen(Color(255, 0, 0, 255));
-    graphics.DrawLine(&pen, 0, 0, 200, 100);
-    graphics.DrawImage(&image,elevatorData.x,elevatorData.y,config::elevatorImageHeight,config::elevatorImageWidth);
+    ele.draw(graphics);
 }
 VOID OnTimer(HWND hWnd) {
     RECT rect;
     GetClientRect(hWnd, &rect);
 
-    // Update the position of the image
-    elevatorData.y += elevatorData.speed;
+    ele.updatePos(rect); //update elevator position
 
-    // Check if the image has reached the bottom of the window
-    if ((elevatorData.y + config::elevatorImageHeight >= rect.bottom)||(elevatorData.y <=0))
-    {
-        // Reset the position of the image to the top
-        elevatorData.speed *= (-1);
-    }
 
     // Request a repaint of the window
     InvalidateRect(hWnd, NULL, FALSE);

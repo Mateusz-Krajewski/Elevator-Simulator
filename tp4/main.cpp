@@ -1,58 +1,108 @@
-#include <windows.h>
-#include <objidl.h>
-#include <gdiplus.h>
+#include "frameworks.h"
 
-#include "Config.h"
-
-#include <filesystem>
-
-struct pos {
+struct pos_t {
     int x;
     int y;
+};
+enum direction_t {
+    up,
+    down,
+    wait
 };
 
 using namespace Gdiplus;
 #pragma comment (lib,"Gdiplus.lib")
 
+class Floor {
+private:
+    pos_t position[2];
+    int floorNum;
+public:
+    Floor(pos_t position[2], int floorNum) :floorNum(floorNum) {
+        this->position[0] = position[0];
+        this->position[1] = position[1];
+    };
+    void draw(Graphics &graphics) {
+        Pen pen(Color(255,0,0));
+        graphics.DrawLine(&pen,this->position[0].x,this->position[0].y,this->position[1].x,this->position[1].y);
+    }
+    int getY() {
+        return this->position[0].y;
+    }
+    bool needStop() {
+        return true;
+    }
+};
+
+
 class Elevator {
 private:
-    pos position;
+    pos_t position;
     int speed;
+    direction_t direction;
+    int stopTimer;
 
 
 public:
-    Elevator(pos position):position(position) {
+    Elevator(pos_t position):position(position) {
         this->speed = config::elevatorStandardSpeed;
+        this->direction = up;
+        this->stopTimer = -1;
     };
     void draw(Graphics &graphics) {
         Image image(config::elevatorImagePath);
         graphics.DrawImage(&image, this->position.x,this->position.y, config::elevatorImageHeight, config::elevatorImageWidth);
     }
-    void updatePos(RECT &rect) {
-        // Update the position of the image
-        this->position.y += this->speed;
+    void updatePos(RECT &rect,std::vector<Floor> floors) {
+        if (this->stopTimer != -1) {
+            this->stopTimer++;
+        }
+        for (auto f : floors) {
+            if ((f.getY() == this->position.y+config::elevatorImageHeight+config::elevatorMargines)&&(this->direction!=wait)) {
+                this->direction = wait;
+                this->stopTimer = 0;
+            }
+        }
+        if (this->stopTimer >= 10) {
+            this->direction = down;
+            this->stopTimer = -1;
+       }
 
-        // Check if the image has reached the bottom of the window
-        if ((this->position.y + config::elevatorImageHeight +config::elevatorMargines >= rect.bottom) || (this->position.y <= 0))
-        {
-            // Reset the position of the image to the top
-            this->speed *= (-1);
+
+        //poruszanie winda w zaleznosci od direction
+        if (this->direction == up) {
+            this->position.y -= this->speed;
+        }else if (this->direction == down) {
+            this->position.y += this->speed;
+        }
+        //zmiana kierunku w skrajnych przypadkach
+        if ((this->position.y + config::elevatorImageHeight + config::elevatorMargines >= rect.bottom)) {
+            this->direction = up;
+        }else if(this->position.y <= 0){
+            this->direction = down;
         }
     }
 };
 
-Elevator ele({100,100});
+pos_t p[2] = { { 0,200 },{100,200} };
+pos_t p2[2] = { {0,400},{100,400} };
+std::vector<Floor> floors = { {p,0},{ p2,1 } };
+Elevator elevator({100,100});
 
 VOID OnPaint(HDC hdc)
 {
     Graphics graphics(hdc);
-    ele.draw(graphics);
+    elevator.draw(graphics);
+    for (auto f : floors) {
+        f.draw(graphics);
+    }
 }
+
 VOID OnTimer(HWND hWnd) {
     RECT rect;
     GetClientRect(hWnd, &rect);
 
-    ele.updatePos(rect); //update elevator position
+    elevator.updatePos(rect,floors); //update elevator position
 
 
     // Request a repaint of the window

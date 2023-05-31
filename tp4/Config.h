@@ -1,32 +1,21 @@
 #pragma once
 
-
 namespace config {
-	const WCHAR* elevatorImagePath = L"C:/Users/matik/Documents/Elevator-Simulator/img/elevator.png";
-	const int elevatorStandardSpeed = 2;
-
-
-	const int elevatorMargines = 12;
-	const int elevatorImageHeight = 100;
-	const int elevatorImageWidth = 120;
-
+	/*
+	/ window configs
+	*/
 	const int windowWidth = 800;
 	const int windowHeight = 600;
+	// end window configs
 
-	const int simulationSpeed = 2;
-
-	namespace people{
-		const bool randomWeight = false;
-		const int staticPeopleWeight = 70;
-		const int minWeight = 50;
-		const int maxWeight = 120;
-	}
-	namespace floor {
-		const int numberFloors = 5;
-	}
-	namespace elevator {
-		const int maxPeopleWeight = 600;
-		const int maxPeopleNum = 10;
-	}
+	/*
+	/ elevator configs
+	*/
+	const WCHAR* elevatorImagePath = L"C:/Users/matik/Documents/Elevator-Simulator/img/elevator.png"; //path to image(TODO change to no absolute path)
+	const int elevatorStandardSpeed = 1; //elevator moving speed
+	const int elevatorMargines = 12;     //from some reason elevator go to bottom, this fix this
+	const int elevatorImageHeight = 100; //wymiary obrazka
+	const int elevatorImageWidth = 120;  //wymiary obrazka
+	// end elevator configs
 
 }

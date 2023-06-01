@@ -13,10 +13,23 @@ enum direction_t {
 using namespace Gdiplus;
 #pragma comment (lib,"Gdiplus.lib")
 
+class People {
+private:
+    int targetFloor;
+    int startFloor;
+public:
+    People(int startFloor, int targetFloor):startFloor(startFloor),targetFloor(targetFloor) {
+    }
+    int getTargetFloor() {
+        return this->targetFloor;
+    }
+};
+
 class Floor {
 private:
     pos_t position[2];
     int floorNum;
+    std::vector<People> people;
 public:
     Floor(pos_t position[2], int floorNum) :floorNum(floorNum) {
         this->position[0] = position[0];
@@ -29,8 +42,21 @@ public:
     int getY() {
         return this->position[0].y;
     }
-    bool needStop() {
-        return true;
+    bool needStop(direction_t direction) {
+        /*
+        for (auto p : this->people) {
+            if((direction == up)&&(p.getTargetFloor() > this->getFloorNum())){
+                return true;
+            }
+            else if ((direction == down) && (p.getTargetFloor() < this->getFloorNum())) {
+                return true;
+            }
+        }
+        */
+        return false;
+    }
+    int getFloorNum() {
+        return this->floorNum;
     }
 };
 
@@ -39,58 +65,121 @@ class Elevator {
 private:
     pos_t position;
     int speed;
-    direction_t direction;
+    direction_t direction[2];
     int stopTimer;
+    int actualFloorNum;
+    std::vector<People> people;
 
 
 public:
     Elevator(pos_t position):position(position) {
         this->speed = config::elevatorStandardSpeed;
-        this->direction = up;
+        this->direction[1] = wait;
+        this->direction[0] = up;
         this->stopTimer = -1;
+        this->actualFloorNum = 0;
     };
+    void newClient(People people) {
+        this->people.push_back(people);
+        if (this->actualFloorNum > people.getTargetFloor()) {
+            this->direction[0] = this->direction[1];
+            this->direction[1] = down;
+        }else if (this->actualFloorNum < people.getTargetFloor()) {
+            this->direction[0] = this->direction[1];
+            this->direction[1] = up;
+        }
+    }
     void draw(Graphics &graphics) {
         Image image(config::elevatorImagePath);
         graphics.DrawImage(&image, this->position.x,this->position.y, config::elevatorImageHeight, config::elevatorImageWidth);
+    }
+    bool needStop(int floorNum) {
+        for (auto p : this->people) {
+            if (p.getTargetFloor() == floorNum) {
+                return true;
+            }
+        }
+        return false;
+    }
+    void goOut() {
+        for (auto p = this->people.begin(); p != this->people.end();p++) {
+            if (p->getTargetFloor() == this->actualFloorNum) {
+                //TODO add some exit animation
+                this->people.erase(p);
+            }
+        }
     }
     void updatePos(RECT &rect,std::vector<Floor> floors) {
         if (this->stopTimer != -1) {
             this->stopTimer++;
         }
         for (auto f : floors) {
-            if ((f.getY() == this->position.y+config::elevatorImageHeight+config::elevatorMargines)&&(this->direction!=wait)) {
-                this->direction = wait;
-                this->stopTimer = 0;
+            direction_t d;
+            if (this->direction[1] != wait) {
+                d = this->direction[1];
+            }
+            else {
+                d = this->direction[0];
+            }
+            if ((f.getY() == this->position.y+config::elevatorImageHeight+config::elevatorMargines)&&(this->direction[1]!=wait)){
+                if (f.needStop(d) || this->needStop(this->actualFloorNum)) {
+                    this->direction[0] = this->direction[1];
+                    this->direction[1] = wait;
+                    this->stopTimer = 0;
+                    this->goOut();
+                }
+                if (this->direction[1] == wait) {
+                    if (f.getFloorNum() == (floors.size() - 1)) {
+                        direction[0] = down;
+                    }
+                    else if (f.getFloorNum() == 0) {
+                        direction[0] = up;
+                    }
+                }
+                else {
+                    if (f.getFloorNum() == (floors.size() - 1)) {
+                        direction[0] = wait;
+                        direction[1] = down;
+                    }
+                    else if (f.getFloorNum() == 0) {
+                        direction[0] = wait;
+                        direction[1] = up;
+                    }
+                }
             }
         }
-        if (this->stopTimer >= 10) {
-            this->direction = down;
+        if (this->stopTimer >= 20&&this->direction[1]==wait) {
+            this->direction[1]=this->direction[0];
+            this->direction[0] = wait;
             this->stopTimer = -1;
        }
 
 
         //poruszanie winda w zaleznosci od direction
-        if (this->direction == up) {
+        if (this->direction[1] == up) {
             this->position.y -= this->speed;
-        }else if (this->direction == down) {
+        }else if (this->direction[1] == down) {
             this->position.y += this->speed;
         }
         //zmiana kierunku w skrajnych przypadkach
-        if ((this->position.y + config::elevatorImageHeight + config::elevatorMargines >= rect.bottom)) {
-            this->direction = up;
-        }else if(this->position.y <= 0){
-            this->direction = down;
-        }
+
     }
 };
 
-pos_t p[2] = { { 0,200 },{100,200} };
-pos_t p2[2] = { {0,400},{100,400} };
-std::vector<Floor> floors = { {p,0},{ p2,1 } };
-Elevator elevator({100,100});
+pos_t p[2] = { { 0,150 },{100,150} };
+pos_t p2[2] = { {0,350},{100,350} };
+pos_t p3[2] = { {0,550},{100,550} };
+std::vector<Floor> floors = { {p,2},{ p2,1 },{p3,0} };
+Elevator elevator({100,400});
+
+bool one = false;
 
 VOID OnPaint(HDC hdc)
 {
+    if (one == false) {
+        one = true;
+        elevator.newClient(People(0,2));
+    }
     Graphics graphics(hdc);
     elevator.draw(graphics);
     for (auto f : floors) {
